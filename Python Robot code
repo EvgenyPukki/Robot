@@ -1,0 +1,152 @@
+import sys
+import numpy as np
+import cv2 as cv
+import time
+import serial
+from RPi import GPIO 
+import time                
+import os
+
+GPIO.setmode(GPIO.BOARD)   
+GPIO.setwarnings(False)    
+GPIO.setup(11, GPIO.OUT)    
+GPIO.setup(13, GPIO.IN)
+
+cap = cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_FPS, 20) 
+cap.set(cv2.CAP_PROP_FRAME_WIDTH,640) #  Ширина кадров в видеопотоке.
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 400)#  Высота кадров в видеопотоке.
+cap.set(cv2.CAP_PROP_BRIGHTNESS, 0.6)
+cap.set(cv2.CAP_PROP_CONTRAST, 1)
+cap.set(cv2.CAP_PROP_SATURATION, 0)
+ser = serial.Serial('/dev/ttyUSB0',9600, timeout = 1)
+flag_sum = 0
+x = 300
+y = 1
+r = 1
+Time = time.time()
+Time_Led = True
+Long_Led = 1
+if __name__ == '__main__':
+    while(True):
+        GPIO.output(11, True)       
+        buttonIn = GPIO.input(13)
+        time.sleep(1)
+        if buttonIn == True:
+            GPIO.output(11, False)       
+            time.sleep(2)
+            buttonIn = GPIO.input(13)
+            if buttonIn == True:
+                for value_loop in range(20):
+                    GPIO.output(11, 0)
+                    time.sleep(0.05)
+                    GPIO.output(11, 1)
+                    time.sleep(0.05)
+                    buttonIn = GPIO.input(13)
+                os.system("sudo reboot")        
+            while(True):
+                buttonIn = GPIO.input(13)
+                if buttonIn == True:
+                    GPIO.output(11, True)       
+                    time.sleep(2)
+                    break          
+                if (time.time() - Time) > Long_Led:
+                    Time_Led = not Time_Led 
+                    Time = time.time()
+                    GPIO.output(11, Time_Led)
+                    
+                ret, img = cap.read()      
+                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
+                edged = cv2.Canny(img, 60,120)
+                edged = cv2.GaussianBlur(edged, (7, 7), 0)
+                circles = cv2.HoughCircles(edged, cv2.HOUGH_GRADIENT, 1, 600, param1=100, param2=45,
+                            minRadius=10,
+                            maxRadius=300)
+                try:
+                    circles = np.uint16(np.around(circles))         
+                    for i in circles[0,:]:
+                        x, y, r = i             
+                        cv2.circle(img,(i[0],i[1]),i[2],(0,255,255),2)
+                        cv2.circle(img,(i[0],i[1]),2,(0,0,255),3)
+                        flag = 1
+                        flag_sum = 0
+                except:
+                    flag = 0
+                    flag_sum = flag_sum + 1
+                    print("non circles")
+                print(x, y, r)
+               
+                if cv2.waitKey(1) & 0xFF == ord('w'):
+                    cmd = "d" 
+                    ser.write(cmd.encode())
+                    time.sleep(0.1)
+                    cmd = "s"
+                    ser.write(cmd.encode())
+                          
+                if (flag_sum > 20):
+                    flag_sum = 0
+                    print("left")
+                    cmd = "r" 
+                    ser.write(cmd.encode())
+                    time.sleep(0.5)
+                    cmd = "s"
+                    ser.write(cmd.encode())         
+                
+                if (x < 250) and (flag == 1):   
+                    print("left")
+                    cmd = "l" 
+                    ser.write(cmd.encode())
+                    time.sleep(0.05)
+                    cmd = "s"
+                    ser.write(cmd.encode())
+              
+                if (x > 350) and (flag == 1) :
+                    print("right")
+                    cmd = "r" 
+                    ser.write(cmd.encode())
+                    time.sleep(0.05)
+                    cmd = "s"
+                    ser.write(cmd.encode())
+                
+                if (x<350) and (x>250) and (r < 200):
+                    print("up")
+                    if (r < 30):
+                        cmd = "u" 
+                        ser.write(cmd.encode())
+                        time.sleep(0.05)
+                        cmd = "s"
+                        ser.write(cmd.encode())
+                    if (r > 30) and (r < 80):
+                        cmd = "u" 
+                        ser.write(cmd.encode())
+                        time.sleep(0.05)
+                        cmd = "s"
+                        ser.write(cmd.encode())
+                    
+                    if (r > 80) and (r < 160):
+                        cmd = "u" 
+                        ser.write(cmd.encode())
+                        time.sleep(0.02)
+                        cmd = "s"
+                        ser.write(cmd.encode())    
+                                            
+                    if (r > 160):
+                        print("take")
+                        cmd = "t"            
+                        ser.write(cmd.encode())
+                        time.sleep(0.1)
+                        cmd = "s"
+                        ser.write(cmd.encode())
+                        time.sleep(0.1)                            
+                                                  
+                print(circles)
+                cv.imshow('contours', img)
+               # cv.imshow('edged', edged)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    cmd = "s"
+                    ser.write(cmd.encode())
+                    break
+                    cv.destroyAllWindows()
+                    ser.close()
+            
+
