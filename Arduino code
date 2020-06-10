@@ -1,0 +1,755 @@
+//      Sound 
+//  0001 - Move 
+//  0002 - Robot 1 
+//  0003 - Robot 2 
+//  0004 - Robot 3
+//  0005 - Start 1   
+//  0006 - Start Trans
+//  0007 - Shutdown   
+//  0008 - Robot car   
+//  0009 - Start 
+//  0011 - Activation   
+//  0012 - Ball capted   
+//  0013 - Ball found   
+//  0014 - Grab the ball  
+//  0015 - Looking for the ball
+//  0016 - Shutdown
+//  0017 - Coming back
+
+
+
+#include <BTCA2ALite.h>
+#include <DFPlayer_Mini_Mp3.h>
+#include <Wire.h>
+#include "LedControlMS.h"
+#include <VarSpeedServo.h> 
+
+LedControl lc=LedControl(35,38,43,1);
+
+unsigned long time_Matrix, time_Take, time_CarRead, time_Read, time_MoveSound;
+int flag_Matrix, flag_Take=0, flag_MoveSound = 0, flag_Light = 1;
+byte Select_flag = 0, FindBall_flag = 0;
+byte Motor_1_Speed = 100;
+byte Motor_2_Speed = 100;
+char val;
+int Servo_Position[6][20];
+
+btca2aLite btca2aLite; 
+VarSpeedServo Servo_Motor[6];
+
+void setup() {
+  
+  Servo_Motor[0].write(75); 
+  Servo_Motor[0].attach(4);
+  Servo_Motor[1].write(30);
+  Servo_Motor[1].attach(8);
+  Servo_Motor[2].write(50);
+  Servo_Motor[2].attach(5);
+  Servo_Motor[3].write(180);
+  Servo_Motor[3].attach(9);
+  Servo_Motor[4].write(90);
+  Servo_Motor[4].attach(7);
+  Servo_Motor[5].write(110);
+  Servo_Motor[5].attach(6);   
+  
+// ----- Motor ----  
+  pinMode(2, OUTPUT);             
+  pinMode(3, OUTPUT);
+  pinMode(46, OUTPUT);
+  pinMode(48, OUTPUT);  
+  pinMode(49, OUTPUT);
+  pinMode(51, OUTPUT); 
+// --- White Led --- 
+  pinMode(34, OUTPUT);
+  pinMode(41, OUTPUT);
+  pinMode(42, OUTPUT);
+// --- FS Blue LED --
+  pinMode(50, OUTPUT);  
+  pinMode(52, OUTPUT);  
+  pinMode(53, OUTPUT);
+// - Status Red LED -  
+  pinMode(31, OUTPUT);
+//  ---- Sensors-----  
+  pinMode(11, INPUT);  // White Right
+  pinMode(12, INPUT);  // White Left
+  pinMode(A0, INPUT);  // Find ball
+
+//  -- Servo Start --    
+
+
+  lc.shutdown(0,false);
+  lc.setIntensity(0,4);
+  lc.clearDisplay(0);
+  
+  btca2aLite.SetupHardwareSerial(3, 115200); 
+  Serial.begin(9600);
+  Serial1.begin(9600);
+  Serial2.begin(9600);
+  Wire.begin();
+
+  mp3_set_serial (Serial1);  //set Serial for DFPlayer-mini mp3 module 
+  mp3_set_volume (30);   
+ 
+  Led_Strip("Black", "Black"); 
+  time_Matrix = millis();
+ 
+}
+
+//-------------- Servo_Motor-----------------
+int Servo_Move() {   
+  for(int i = 0; i < 6; i++)  Servo_Motor[i].slowmove(Servo_Position[i][1], 10); 
+ // for(int i = 0; i < 6; i++)  Servo_Motor[i].write(Servo_Position[i][1]); 
+}
+//---------------------------------------------
+//-------------- Activation -------------------
+
+int Activation() {
+  Led_Strip("Black", "Black"); 
+  digitalWrite(34, LOW);  
+  digitalWrite(41, LOW);  
+  digitalWrite(42, LOW);  
+  digitalWrite(50, LOW);  
+  digitalWrite(52, LOW);  
+  digitalWrite(53, LOW);  
+  digitalWrite(31, LOW);
+  lc.clearDisplay(0);  
+
+  Servo_Motor[0].write(75); 
+  Servo_Motor[0].attach(4);
+  Servo_Motor[1].write(30);
+  Servo_Motor[1].attach(8);
+  Servo_Motor[2].write(50);
+  Servo_Motor[2].attach(5);
+  Servo_Motor[3].write(180);
+  Servo_Motor[3].attach(9);
+  Servo_Motor[4].write(90);
+  Servo_Motor[4].attach(7);
+  Servo_Motor[5].write(110);
+  Servo_Motor[5].attach(6);   
+
+
+
+  delay(100);
+  mp3_play (11);
+  delay(1000);
+  mp3_play (6);
+  
+  delay(2250);
+  digitalWrite(34, HIGH);     
+  delay(500);  
+  digitalWrite(41, HIGH);    
+  delay (250);
+  digitalWrite(42, HIGH);   
+  delay(1200);
+  digitalWrite(50, HIGH);  
+  delay (400);
+  digitalWrite(52, HIGH);  
+  delay (200);
+  digitalWrite(53, HIGH); 
+  digitalWrite(31, HIGH);  
+  delay (1700);  
+  Stop_Matrix();
+  delay (750);  
+  for(int i = 0; i<15; i++) {
+   Led_Strip("Blue", "Black"); 
+   delay (50);
+  }
+  for(int i = 0; i<10; i++) {
+   Led_Strip("Blue", "Blue"); 
+   delay (50);
+  }  
+// Up();
+// delay(500);
+//  Stop();
+// delay(200);
+//  Down();
+//  delay(500);
+//  Stop();
+  delay(100); 
+  digitalWrite(34, LOW); 
+  delay(100);
+  digitalWrite(41, LOW);
+  delay(100);  
+  digitalWrite(42, LOW);
+  delay(100);    
+}
+//---------------------------------------------
+//---------------- Shutdown -------------------
+int Shutdown(){
+    
+  
+  for(int i = 0; i<5; i++) {
+   Led_Strip("Red", "Red"); 
+   delay (50);
+  }
+  
+  delay(100);
+  mp3_play (16);
+  delay (1000);
+  mp3_play (7);
+  digitalWrite(34, LOW);     
+  delay(500);  
+  digitalWrite(41, LOW);    
+  delay (250);
+  digitalWrite(42, LOW);   
+  delay(1200);
+  digitalWrite(50, LOW);  
+  delay (400);
+  digitalWrite(52, LOW);  
+  delay (200);
+  digitalWrite(53, LOW); 
+  digitalWrite(31, LOW);
+  for(int i = 0; i<5; i++) {
+   Led_Strip("Blue", "Black"); 
+   delay (50);
+  }
+  for(int i = 0; i<5; i++) {
+   Led_Strip("Black", "Black"); 
+   delay (50);
+  }
+  
+  Stop();
+  Servo_Motor[0].detach();
+  Servo_Motor[1].detach();
+  Servo_Motor[2].detach();
+  Servo_Motor[3].detach();
+  Servo_Motor[4].detach();
+  Servo_Motor[5].detach();
+  lc.clearDisplay(0);  
+}
+//---------------------------------------------
+//----------------- Start ----------------------------------------------------------------------------------------------------------------------------------------
+int Start() {
+  Activation();
+  time_CarRead = millis();
+  time_MoveSound = millis();
+  while (Select_flag != 1) {
+    if (Select_flag == 0) Read_serial();
+    if (Select_flag == 2) Read_serial2();
+    if (Select_flag == 3) End();
+    if((flag_MoveSound == 1)&&(Select_flag != 2)) {
+      if (millis() - time_MoveSound > 900) {
+        time_MoveSound = millis();
+        mp3_play(1);
+      }
+    }
+    flag_MoveSound = 0;
+    Bluetooth_Key();
+    if (flag_Light == 1) {
+      digitalWrite(34, HIGH);     
+      digitalWrite(41, HIGH);    
+      digitalWrite(42, HIGH);
+    }
+    else {
+      digitalWrite(34, LOW);     
+      digitalWrite(41, LOW);    
+      digitalWrite(42, LOW);
+    }   
+  }
+  
+  Shutdown();
+}
+//---------------------------------------------
+//-------------- Bluetooth_Key----------------
+int Bluetooth_Key() {
+  
+  btca2aLite.ReadCommand();  
+ 
+  if (btca2aLite.ButtonPressed(KEYCODE_DPAD_DOWN)) {Select_flag = 1;}   
+  
+  if (btca2aLite.ButtonPressed(KEYCODE_DPAD_UP))    {}
+  
+  if (btca2aLite.ButtonPressed(KEYCODE_DPAD_DOWN))  {}
+  
+  if (btca2aLite.ButtonPressed(KEYCODE_DPAD_LEFT))  {}
+  
+  if (btca2aLite.ButtonPressed(KEYCODE_DPAD_RIGHT)) {}
+      
+  
+  if (btca2aLite.ButtonPressed(KEYCODE_BUTTON_R2))  {}
+   
+  if (btca2aLite.ButtonPressed(KEYCODE_BUTTON_L1))  {flag_Light = 0;}
+  
+  if (btca2aLite.ButtonPressed(KEYCODE_BUTTON_L2))  {flag_Light = 1;}
+  
+  if (btca2aLite.ButtonPressed(KEYCODE_BUTTON_Y))   {}
+   
+  if (btca2aLite.ButtonPressed(KEYCODE_BUTTON_B))   {}
+ 
+
+}
+//---------------------------------------------
+
+//----------------Wire Send--------------------
+//Send(x)
+int Send(int x) {
+   Wire.beginTransmission(9); // transmit to device #8
+   Wire.write(x);              // sends one byte
+   Wire.endTransmission();
+}
+//---------------------------------------------
+
+// ------------------ MATRIX ------------------
+//  Stop_Matrix();
+//  Up_Matrix();
+//  Down_Matrix();
+//  Left_Matrix();
+//  Right_Matrix();
+
+void Up_Matrix() {
+  if (flag_Matrix != 1) {
+    flag_Matrix = 1;
+    lc.clearDisplay(0);}
+    
+    
+  if (millis() - time_Matrix > 800) {      
+    time_Matrix = millis();
+    lc.clearDisplay(0);
+    }       
+  if (millis() - time_Matrix > 300) {   
+    for(int i_Matrix = 1; i_Matrix < 7; i_Matrix++) {
+       lc.setLed(0,1,i_Matrix,true);
+    }   
+  }  
+  if (millis() - time_Matrix > 200) {  
+    for(int i_Matrix = 1; i_Matrix < 7; i_Matrix++) {
+       lc.setLed(0,2,i_Matrix,true);
+    }    
+  lc.setLed(0,2,0,true);
+  lc.setLed(0,2,7,true);  
+  }
+ if (millis() - time_Matrix > 100) {  
+    lc.setLed(0,3,0,true);
+    lc.setLed(0,3,7,true);
+ } 
+}
+void Down_Matrix() {
+   if (flag_Matrix != 2) {
+    flag_Matrix = 2;
+    lc.clearDisplay(0);}
+    
+  if (millis() - time_Matrix > 800) {      
+    time_Matrix = millis();
+    lc.clearDisplay(0);
+    }       
+  if (millis() - time_Matrix > 300) {   
+    for(int i_Matrix = 1; i_Matrix < 7; i_Matrix++) {
+       lc.setLed(0,6,i_Matrix,true);
+    }   
+  }  
+  if (millis() - time_Matrix > 200) {  
+    for(int i_Matrix = 1; i_Matrix < 7; i_Matrix++) {
+       lc.setLed(0,5,i_Matrix,true);
+    }    
+  lc.setLed(0,5,0,true);
+  lc.setLed(0,5,7,true);  
+  }
+ if (millis() - time_Matrix > 100) {  
+    lc.setLed(0,4,0,true);
+    lc.setLed(0,4,7,true);
+ } 
+}
+
+void Stop_Matrix() {    
+  if (flag_Matrix != 3) {
+  flag_Matrix = 3;
+  lc.clearDisplay(0);}
+  
+  for(int i_Matrix = 0; i_Matrix < 8; i_Matrix++) {
+       lc.setLed(0,2,i_Matrix,true);
+    }       
+  for(int i_Matrix = 0; i_Matrix < 8; i_Matrix++) {
+       lc.setLed(0,5,i_Matrix,true);
+    }    
+  lc.setLed(0,3,0,true);
+  lc.setLed(0,3,7,true);  
+  lc.setLed(0,4,0,true);
+  lc.setLed(0,4,7,true);
+ 
+}
+
+void Left_Matrix() {
+  if (flag_Matrix != 4) {
+    flag_Matrix = 4;
+    lc.clearDisplay(0);}
+    
+    
+  if (millis() - time_Matrix > 800) {      
+    time_Matrix = millis();
+    lc.clearDisplay(0);
+    }       
+  if (millis() - time_Matrix > 300) {   
+    for(int i_Matrix = 1; i_Matrix < 7; i_Matrix++) {
+       lc.setLed(0,i_Matrix,1,true);
+    }   
+  }  
+  if (millis() - time_Matrix > 200) {  
+    for(int i_Matrix = 1; i_Matrix < 7; i_Matrix++) {
+       lc.setLed(0,i_Matrix,2,true);
+    }    
+  lc.setLed(0,0,2,true);
+  lc.setLed(0,7,2,true);  
+  }
+ if (millis() - time_Matrix > 100) {  
+    lc.setLed(0,0,3,true);
+    lc.setLed(0,7,3,true);
+ } 
+}
+void Right_Matrix() {
+   if (flag_Matrix != 5) {
+    flag_Matrix = 5;
+    lc.clearDisplay(0);}
+    
+  if (millis() - time_Matrix > 800) {      
+    time_Matrix = millis();
+    lc.clearDisplay(0);
+    }       
+  if (millis() - time_Matrix > 300) {   
+    for(int i_Matrix = 1; i_Matrix < 7; i_Matrix++) {
+       lc.setLed(0,i_Matrix,6,true);
+    }   
+  }  
+  if (millis() - time_Matrix > 200) {  
+    for(int i_Matrix = 1; i_Matrix < 7; i_Matrix++) {
+       lc.setLed(0,i_Matrix,5,true);
+    }    
+  lc.setLed(0,0,5,true);
+  lc.setLed(0,7,5,true);  
+  }
+ if (millis() - time_Matrix > 100) {  
+    lc.setLed(0,0,4,true);
+    lc.setLed(0,7,4,true);
+ } 
+}
+//---------------------------------------------
+
+// ------------------ MOTOR -------------------
+//  Stop();
+//  Up();
+//  Down();
+//  Left();
+//  Right();
+
+
+int Stop() { 
+  Stop_Matrix(); 
+  analogWrite(2, 0);   
+  analogWrite(3, 0);   
+  digitalWrite(51, LOW);   
+  digitalWrite(49, LOW);   
+  digitalWrite(48, LOW);   
+  digitalWrite(46, LOW); 
+}
+
+int Up() {  
+  Up_Matrix();
+  flag_MoveSound = 1;
+  analogWrite(2, Motor_1_Speed);   
+  analogWrite(3, Motor_2_Speed);   
+  digitalWrite(51, HIGH);   
+  digitalWrite(49, LOW);   
+  digitalWrite(48, LOW);   
+  digitalWrite(46, HIGH); 
+}
+
+int Down() { 
+  Down_Matrix(); 
+  flag_MoveSound = 1;
+  analogWrite(2, Motor_1_Speed);   
+  analogWrite(3, Motor_2_Speed);   
+  digitalWrite(51, LOW);   
+  digitalWrite(49, HIGH);   
+  digitalWrite(48, HIGH);   
+  digitalWrite(46, LOW); 
+}
+
+int Right() { 
+  Right_Matrix();
+  flag_MoveSound = 1; 
+  analogWrite(2, Motor_1_Speed);   
+  analogWrite(3, Motor_2_Speed);   
+  digitalWrite(51, HIGH);   
+  digitalWrite(49, HIGH);   
+  digitalWrite(48, LOW);   
+  digitalWrite(46, LOW); 
+}
+
+int Left() {  
+  Left_Matrix();
+  flag_MoveSound = 1;
+  analogWrite(2, Motor_1_Speed);   
+  analogWrite(3, Motor_2_Speed);   
+  digitalWrite(51, LOW);   
+  digitalWrite(49, LOW);   
+  digitalWrite(48, HIGH);   
+  digitalWrite(46, HIGH); 
+}
+//---------------------------------------------
+// ------------------ Take --------------------
+int Take() {  
+  time_Take = millis();
+  FindBall_flag = 0;
+  while((millis()-time_Take < 14000)&&(Select_flag != 1)) {
+    Bluetooth_Key();
+    if(millis()-time_Take < 3000) {
+      Servo_Position[0][1] = 75;
+      Servo_Position[1][1] = 30;
+      Servo_Position[2][1] = 50;
+      Servo_Position[3][1] = 180;
+      Servo_Position[4][1] = 90;
+      Servo_Position[5][1] = 80;
+      Servo_Move();
+    }
+    if((millis()-time_Take > 3000)&&(millis()-time_Take < 6000)){
+      Servo_Position[0][1] = 75;
+      Servo_Position[1][1] = 60;
+      Servo_Position[2][1] = 110;
+      Servo_Position[3][1] = 180;
+      Servo_Position[4][1] = 90;
+      Servo_Position[5][1] = 80;
+      Servo_Move();
+    }
+    if((millis()-time_Take > 6000)&&(millis()-time_Take < 9000)){
+      Servo_Position[0][1] = 75;
+      Servo_Position[1][1] = 60;
+      Servo_Position[2][1] = 110;
+      Servo_Position[3][1] = 180;
+      Servo_Position[4][1] = 90;
+      Servo_Position[5][1] = 125;
+      Servo_Move();
+    }
+    
+    
+    if((millis()-time_Take > 9000)&&(millis()-time_Take < 12000)){
+      
+        Servo_Position[0][1] = 75;
+        Servo_Position[1][1] = 30;
+        Servo_Position[2][1] = 50;
+        Servo_Position[3][1] = 180;
+        Servo_Position[4][1] = 90;
+        Servo_Position[5][1] = 125;
+        Servo_Move();      
+      }
+
+   
+    if(millis()-time_Take > 12000){     
+      if (analogRead(A0) < 300) FindBall_flag = 1;
+    } 
+    
+    
+  }
+  
+  //Serial.println("Find ball");
+}
+//-------------------------------------------------
+int Take2() {  
+  time_Take = millis();
+  while((millis()-time_Take < 15000)&&(Select_flag != 1)) {
+    Bluetooth_Key();
+    if(millis()-time_Take < 3000) {
+      Servo_Position[0][1] = 75;
+      Servo_Position[1][1] = 30;
+      Servo_Position[2][1] = 50;
+      Servo_Position[3][1] = 180;
+      Servo_Position[4][1] = 90;
+      Servo_Position[5][1] = 125;
+      Servo_Move();
+    }
+    if((millis()-time_Take > 6000)&&(millis()-time_Take < 9000)){
+      Servo_Position[0][1] = 75;
+      Servo_Position[1][1] = 50;
+      Servo_Position[2][1] = 50;
+      Servo_Position[3][1] = 180;
+      Servo_Position[4][1] = 90;
+      Servo_Position[5][1] = 125;
+      Servo_Move();
+    }
+    if((millis()-time_Take > 9000)&&(millis()-time_Take < 12000)){
+      Servo_Position[0][1] = 75;
+      Servo_Position[1][1] = 50;
+      Servo_Position[2][1] = 60;
+      Servo_Position[3][1] = 180;
+      Servo_Position[4][1] = 90;
+      Servo_Position[5][1] = 125;      
+      Servo_Move();
+
+    }
+     if((millis()-time_Take > 12000)&&(millis()-time_Take < 15000)){
+      Servo_Position[0][1] = 75;
+      Servo_Position[1][1] = 50;
+      Servo_Position[2][1] = 60;
+      Servo_Position[3][1] = 180;
+      Servo_Position[4][1] = 90;
+      Servo_Position[5][1] = 75;
+      Servo_Move();
+    }              
+  }    
+}
+
+
+
+
+//---------------------------------------------
+int CarRead_serial(){
+  while (Serial.available() > 0)  val = Serial.read();
+  delay(400);
+  if (val == 'd') Serial2.write("u");
+  if (val == 'l') Serial2.write("l");
+  if (val == 'r') Serial2.write("r");
+  
+}
+
+// ------------------ SERIAL-------------------
+// Read_serial()
+
+int Read_serial() {
+  while (Serial.available() > 0)  val = Serial.read();
+  if (val == 'd') Up();
+  if (val == 'u') Down();
+  if (val == 'l') Left();
+  if (val == 'r') Right(); 
+  if (val == 's') Stop(); 
+  if (val == 't') {
+    Down();
+    delay(20);
+    Stop();
+    Take(); 
+    if (FindBall_flag == 1) {
+      Select_flag = 2; 
+      mp3_play (12);
+      delay (1000);
+      Left();
+      delay(2300);
+      Stop();
+      mp3_play(8);
+      delay(100);
+      Serial2.write("u");
+      delay(100);
+      Serial2.write("u");
+      delay(100);
+      Serial2.write("u");
+      delay(100);
+      Serial2.write("s");
+      time_Read = millis();
+
+    } 
+    else {      
+       Up(); 
+       delay(500); 
+       Stop(); 
+    } 
+  //Serial.println("Ball");
+  val = 's';  
+  }  
+}
+//---------------------------------------------
+
+int Read_serial2() {
+  digitalWrite(34, HIGH);     
+  digitalWrite(41, HIGH);    
+  digitalWrite(42, HIGH);
+  while (Serial.available() > 0)  val = Serial.read();
+  if(millis() - time_Read >20000) {
+    if (val == 'd') Up();
+    if (val == 'u') Down();}
+  
+  if (val == 'l') Left();
+  if (val == 'r') Right(); 
+  if (val == 's') Stop(); 
+  if (val == 't') {
+    Serial2.write("t");
+    delay(100);
+    Serial2.write("s");
+    val = 's'; 
+    Take2();
+    Select_flag = 3;  
+   }
+}
+
+//--------------------------------------------
+
+int End(){ 
+      digitalWrite(34, HIGH);     
+      digitalWrite(41, HIGH);    
+      digitalWrite(42, HIGH);
+      Led_Strip("White", "White");    
+      Right();
+      delay(500);
+      Led_Strip("White", "White"); 
+      Stop();
+      delay(500);
+      Led_Strip("White", "White"); 
+      Serial2.write("e");
+      delay(100);
+      Led_Strip("White", "White"); 
+      Serial2.write("s");
+      Up();     
+      delay(1000);
+      Stop();
+     // while((digitalRead(11)==1) && (digitalRead(12)==1) && (Select_flag != 1)) {
+     //   Led_Strip("White", "White"); 
+     //   Motor_1_Speed = 50;
+     //   Motor_2_Speed = 50;
+     //   Bluetooth_Key();
+     //   Down();}      
+      Motor_1_Speed = 100;
+      Motor_2_Speed = 100;
+      Stop();
+      Select_flag = 1;
+}
+
+
+// ------------------ LedStrip-----------------
+//Color: 
+//       "Black"
+//       "Blue"
+//       "Green"
+//       "Red"
+//       "White"
+//         "0"    - Not change
+
+int Led_Strip(String SideLeft_Color, String SideRight_Color) {
+  
+  if (SideLeft_Color != "0" ) {
+    if (SideLeft_Color == "Black" ) Send(0);
+    if (SideLeft_Color == "Blue"  ) Send(1);  
+    if (SideLeft_Color == "Green" ) Send(2);
+    if (SideLeft_Color == "Red"   ) Send(3);
+    if (SideLeft_Color == "White" ) Send(4);
+  }
+  if (SideRight_Color != "0" ) {
+    if (SideRight_Color == "Black") Send(10);
+    if (SideRight_Color == "Blue" ) Send(11);  
+    if (SideRight_Color == "Green") Send(12);
+    if (SideRight_Color == "Red"  ) Send(13);
+    if (SideRight_Color == "White") Send(14);   
+  }
+}
+//---------------------------------------------
+
+void loop() {
+  btca2aLite.ReadCommand();  
+  if (btca2aLite.ButtonPressed(KEYCODE_DPAD_UP)) {
+    Select_flag = 0;
+    Start();
+  }      
+  if (btca2aLite.ButtonPressed(KEYCODE_DPAD_DOWN)) {Select_flag = 1;}        
+  if (btca2aLite.ButtonPressed(KEYCODE_DPAD_LEFT))  {}  
+  if (btca2aLite.ButtonPressed(KEYCODE_DPAD_RIGHT)) {} 
+  if (btca2aLite.ButtonPressed(KEYCODE_BUTTON_X))   {Down();Serial2.write("m");} 
+  if (btca2aLite.ButtonPressed(KEYCODE_BUTTON_A))   {Stop(); Serial2.write("s");}
+  if (btca2aLite.ButtonPressed(KEYCODE_BUTTON_L1))  {
+    flag_Light = 0;
+    digitalWrite(34, LOW);     
+    digitalWrite(41, LOW);    
+    digitalWrite(42, LOW);  
+  } 
+  if (btca2aLite.ButtonPressed(KEYCODE_BUTTON_L2))  {
+    flag_Light = 1;
+    digitalWrite(34, HIGH);     
+    digitalWrite(41, HIGH);    
+    digitalWrite(42, HIGH);
+  }
+  if (btca2aLite.ButtonPressed(KEYCODE_BUTTON_R1))  {if(Serial.available() > 0) mp3_play(13);}  
+}
+
